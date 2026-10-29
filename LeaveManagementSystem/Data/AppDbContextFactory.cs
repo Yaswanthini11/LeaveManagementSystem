@@ -17,5 +17,6 @@ namespace LeaveManagementSystem.Data
 
             return new AppDbContext(optionsBuilder.Options);
         }
+
     }
 }
