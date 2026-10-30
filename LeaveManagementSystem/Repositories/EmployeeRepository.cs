@@ -15,33 +15,33 @@ namespace LeaveManagementSystem.Repositories
         }
 
         // Get all employees
-        public List<Employee> GetAll()
+        public async Task<List<Employee>> GetAll()
         {
-            return _context.Employees
+            return await _context.Employees
                 .AsNoTracking()
-                .ToList();
+                .ToListAsync();
         }
 
         // Get employee by ID
-        public Employee? GetById(int employeeId)
+        public async Task<Employee?> GetById(int employeeId)
         {
-            return _context.Employees
+            return await _context.Employees
                 .AsNoTracking()
-                .FirstOrDefault(e => e.EmployeeId == employeeId);
+                .FirstOrDefaultAsync(e => e.EmployeeId == employeeId);
         }
 
         // Add employee
-        public void Add(Employee employee)
+        public async Task Add(Employee employee)
         {
-            _context.Employees.Add(employee);
-            _context.SaveChanges();
+            await _context.Employees.AddAsync(employee);
+            await _context.SaveChangesAsync();
         }
 
         // Update employee
-        public bool Update(Employee employee)
+        public async Task<bool> Update(Employee employee)
         {
-            var existingEmployee = _context.Employees
-                .Find(employee.EmployeeId);
+            var existingEmployee = await _context.Employees
+                .FindAsync(employee.EmployeeId);
 
             if (existingEmployee == null)
             {
@@ -54,14 +54,16 @@ namespace LeaveManagementSystem.Repositories
             existingEmployee.DateOfJoining = employee.DateOfJoining;
             existingEmployee.IsActive = employee.IsActive;
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
+
             return true;
         }
 
         // Delete employee
-        public bool Delete(int employeeId)
+        public async Task<bool> Delete(int employeeId)
         {
-            var employee = _context.Employees.Find(employeeId);
+            var employee = await _context.Employees
+                .FindAsync(employeeId);
 
             if (employee == null)
             {
@@ -69,7 +71,9 @@ namespace LeaveManagementSystem.Repositories
             }
 
             _context.Employees.Remove(employee);
-            _context.SaveChanges();
+
+            await _context.SaveChangesAsync();
+
             return true;
         }
     }
