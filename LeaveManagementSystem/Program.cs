@@ -1,4 +1,5 @@
-﻿using LeaveManagementSystem.Data;
+﻿
+using LeaveManagementSystem.Data;
 using LeaveManagementSystem.Models;
 using LeaveManagementSystem.Repositories;
 using LeaveManagementSystem.Services;
@@ -17,20 +18,39 @@ namespace LeaveManagementSystem
 
             using var context = new AppDbContext(options);
 
+            // Repositories
             var employeeRepository = new EmployeeRepository(context);
             var leaveTypeRepository = new LeaveTypeRepository(context);
             var requestRepository = new LeaveRequestRepository(context);
             var balanceRepository = new LeaveBalanceRepository(context);
+            var auditLogRepository = new AuditLogRepository(context);
 
-            var employeeService = new EmployeeService(employeeRepository);
-            var leaveTypeService = new LeaveTypeService(leaveTypeRepository);
-            var balanceService = new LeaveBalanceService(balanceRepository);
+            // Audit service
+            var auditLogService = new AuditLogService(auditLogRepository);
+
+            // Main services
+            var employeeService = new EmployeeService(
+                employeeRepository,
+                context,
+                auditLogService);
+
+            var leaveTypeService = new LeaveTypeService(
+                leaveTypeRepository,
+                context,
+                auditLogService);
+
+            var balanceService = new LeaveBalanceService(
+                balanceRepository,
+                context,
+                auditLogService);
 
             var requestService = new LeaveRequestService(
                 requestRepository,
                 employeeRepository,
                 leaveTypeRepository,
-                balanceRepository);
+                balanceRepository,
+                context,
+                auditLogService);
 
             while (true)
             {

@@ -1,4 +1,6 @@
-﻿using LeaveManagementSystem.Models;
+﻿
+using LeaveManagementSystem.Data;
+using LeaveManagementSystem.Models;
 using LeaveManagementSystem.Repositories;
 
 namespace LeaveManagementSystem.Services
@@ -9,17 +11,23 @@ namespace LeaveManagementSystem.Services
         private readonly EmployeeRepository _employeeRepository;
         private readonly LeaveTypeRepository _leaveTypeRepository;
         private readonly LeaveBalanceRepository _balanceRepository;
+        private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
         public LeaveRequestService(
             LeaveRequestRepository requestRepository,
             EmployeeRepository employeeRepository,
             LeaveTypeRepository leaveTypeRepository,
-            LeaveBalanceRepository balanceRepository)
+            LeaveBalanceRepository balanceRepository,
+            AppDbContext context,
+            AuditLogService auditLogService)
         {
             _requestRepository = requestRepository;
             _employeeRepository = employeeRepository;
             _leaveTypeRepository = leaveTypeRepository;
             _balanceRepository = balanceRepository;
+            _context = context;
+            _auditLogService = auditLogService;
         }
 
         public List<LeaveRequest> GetAll()
@@ -27,6 +35,7 @@ namespace LeaveManagementSystem.Services
             return _requestRepository.GetAll();
         }
 
+        // Apply for Leave
         public void Apply(
             int employeeId,
             int leaveTypeId,
@@ -80,19 +89,46 @@ namespace LeaveManagementSystem.Services
             if (overlaps)
                 throw new ArgumentException("This leave period overlaps another request.");
 
-            _requestRepository.Add(new LeaveRequest
+            using var transaction = _context.Database.BeginTransaction();
+
+            try
             {
-                EmployeeId = employeeId,
-                LeaveTypeId = leaveTypeId,
-                StartDate = startDate.Date,
-                EndDate = endDate.Date,
-                TotalDays = totalDays,
-                Reason = reason.Trim(),
-                Status = "Pending",
-                AppliedOn = DateTime.Now
-            });
+                var request = new LeaveRequest
+                {
+                    EmployeeId = employeeId,
+                    LeaveTypeId = leaveTypeId,
+                    StartDate = startDate.Date,
+                    EndDate = endDate.Date,
+                    TotalDays = totalDays,
+                    Reason = reason.Trim(),
+                    Status = "Pending",
+                    AppliedOn = DateTime.Now
+                };
+
+                _requestRepository.Add(request);
+
+                _auditLogService.Log(
+                    "Employee",
+                    "Applied",
+                    "LeaveRequest",
+                    request.LeaveRequestId,
+                    "New leave request submitted",
+                    null,
+                    $"Employee ID: {employeeId}, Leave Type ID: {leaveTypeId}, Total Days: {totalDays}, Status: Pending"
+                );
+
+                _context.SaveChanges();
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
+        // Approve Leave
         public void Approve(int requestId)
         {
             var request = _requestRepository.GetById(requestId);
@@ -111,13 +147,44 @@ namespace LeaveManagementSystem.Services
             if (balance == null || balance.RemainingDays < request.TotalDays)
                 throw new ArgumentException("Insufficient leave balance.");
 
-            balance.UsedDays += request.TotalDays;
+            using var transaction = _context.Database.BeginTransaction();
 
-            request.Status = "Approved";
-            _requestRepository.Update(request);
-            _balanceRepository.SaveChanges();
+            try
+            {
+                string oldValues =
+                    $"Status: {request.Status}, Used Days: {balance.UsedDays}";
+
+                balance.UsedDays += request.TotalDays;
+                request.Status = "Approved";
+
+                _requestRepository.Update(request);
+                _balanceRepository.SaveChanges();
+
+                string newValues =
+                    $"Status: {request.Status}, Used Days: {balance.UsedDays}";
+
+                _auditLogService.Log(
+                    "Admin",
+                    "Approved",
+                    "LeaveRequest",
+                    request.LeaveRequestId,
+                    "Leave request approved and leave balance updated",
+                    oldValues,
+                    newValues
+                );
+
+                _context.SaveChanges();
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
+        // Reject Leave
         public void Reject(int requestId, string rejectionReason)
         {
             var request = _requestRepository.GetById(requestId);
@@ -134,9 +201,39 @@ namespace LeaveManagementSystem.Services
             if (rejectionReason.Length > 500)
                 throw new ArgumentException("Rejection reason cannot exceed 500 characters.");
 
-            request.Status = "Rejected";
-            request.RejectionReason = rejectionReason.Trim();
-            _requestRepository.Update(request);
+            using var transaction = _context.Database.BeginTransaction();
+
+            try
+            {
+                string oldValues = $"Status: {request.Status}";
+
+                request.Status = "Rejected";
+                request.RejectionReason = rejectionReason.Trim();
+
+                _requestRepository.Update(request);
+
+                string newValues =
+                    $"Status: {request.Status}, Rejection Reason: {request.RejectionReason}";
+
+                _auditLogService.Log(
+                    "Admin",
+                    "Rejected",
+                    "LeaveRequest",
+                    request.LeaveRequestId,
+                    "Leave request rejected",
+                    oldValues,
+                    newValues
+                );
+
+                _context.SaveChanges();
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
     }
 }

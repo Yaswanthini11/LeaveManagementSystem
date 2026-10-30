@@ -1,4 +1,6 @@
-﻿using LeaveManagementSystem.Models;
+﻿
+using LeaveManagementSystem.Data;
+using LeaveManagementSystem.Models;
 using LeaveManagementSystem.Repositories;
 
 namespace LeaveManagementSystem.Services
@@ -6,10 +8,17 @@ namespace LeaveManagementSystem.Services
     public class LeaveBalanceService
     {
         private readonly LeaveBalanceRepository _repository;
+        private readonly AppDbContext _context;
+        private readonly AuditLogService _auditLogService;
 
-        public LeaveBalanceService(LeaveBalanceRepository repository)
+        public LeaveBalanceService(
+            LeaveBalanceRepository repository,
+            AppDbContext context,
+            AuditLogService auditLogService)
         {
             _repository = repository;
+            _context = context;
+            _auditLogService = auditLogService;
         }
 
         public List<LeaveBalance> GetByEmployee(int employeeId, int year)
@@ -32,23 +41,66 @@ namespace LeaveManagementSystem.Services
             if (allocatedDays < 0)
                 throw new ArgumentException("Allocated days cannot be negative.");
 
-            var existing = _repository.Get(employeeId, leaveTypeId, year);
+            using var transaction = _context.Database.BeginTransaction();
 
-            if (existing != null)
+            try
             {
-                existing.AllocatedDays = allocatedDays;
-                _repository.SaveChanges();
-                return;
+                var existing = _repository.Get(employeeId, leaveTypeId, year);
+
+                string? oldValues = null;
+                string action;
+
+                LeaveBalance balance;
+
+                if (existing != null)
+                {
+                    oldValues =
+                        $"Allocated Days: {existing.AllocatedDays}, Used Days: {existing.UsedDays}";
+
+                    existing.AllocatedDays = allocatedDays;
+
+                    balance = existing;
+                    action = "Updated";
+
+                    _repository.SaveChanges();
+                }
+                else
+                {
+                    balance = new LeaveBalance
+                    {
+                        EmployeeId = employeeId,
+                        LeaveTypeId = leaveTypeId,
+                        Year = year,
+                        AllocatedDays = allocatedDays,
+                        UsedDays = 0
+                    };
+
+                    _repository.Add(balance);
+                    action = "Allocated";
+                }
+
+                string newValues =
+                    $"Allocated Days: {balance.AllocatedDays}, Used Days: {balance.UsedDays}";
+
+                _auditLogService.Log(
+                    "Admin",
+                    action,
+                    "LeaveBalance",
+                    balance.LeaveBalanceId,
+                    "Employee leave balance allocated or updated",
+                    oldValues,
+                    newValues
+                );
+
+                _context.SaveChanges();
+
+                transaction.Commit();
             }
-
-            _repository.Add(new LeaveBalance
+            catch
             {
-                EmployeeId = employeeId,
-                LeaveTypeId = leaveTypeId,
-                Year = year,
-                AllocatedDays = allocatedDays,
-                UsedDays = 0
-            });
+                transaction.Rollback();
+                throw;
+            }
         }
     }
 }
