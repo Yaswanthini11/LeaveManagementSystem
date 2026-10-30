@@ -4,6 +4,7 @@ using LeaveManagementSystem.Models;
 using LeaveManagementSystem.Repositories;
 using LeaveManagementSystem.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace LeaveManagementSystem
 {
@@ -11,11 +12,18 @@ namespace LeaveManagementSystem
     {
         static async Task Main(string[] args)
         {
-            var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseSqlServer(
-                    @"Server=.\SQLEXPRESS;Database=LeaveManagementDb_V2;Trusted_Connection=True;TrustServerCertificate=True;")
-                .Options;
+            
+             var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .Build();
 
+            string connectionString =
+                configuration.GetConnectionString("DefaultConnection")!;
+
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlServer(connectionString)
+                .Options;
             using var context = new AppDbContext(options);
 
             // Repositories

@@ -1,22 +1,33 @@
 ﻿
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
 
 namespace LeaveManagementSystem.Data
 {
-    public class AppDbContextFactory
-        : IDesignTimeDbContextFactory<AppDbContext>
+    public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
         public AppDbContext CreateDbContext(string[] args)
         {
-            var optionsBuilder =
-                new DbContextOptionsBuilder<AppDbContext>();
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false)
+                .Build();
 
-            optionsBuilder.UseSqlServer(
-               @"Server=.\SQLEXPRESS;Database=LeaveManagementDb_V2;Trusted_Connection=True;TrustServerCertificate=True;");
+            var connectionString =
+                configuration.GetConnectionString("DefaultConnection");
 
-            return new AppDbContext(optionsBuilder.Options);
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "DefaultConnection was not found in appsettings.json.");
+            }
+
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlServer(connectionString)
+                .Options;
+
+            return new AppDbContext(options);
         }
-
     }
 }
