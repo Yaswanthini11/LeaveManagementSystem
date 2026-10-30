@@ -19,6 +19,7 @@ namespace LeaveManagementSystem.Data
         public DbSet<LeaveRequest> LeaveRequests { get; set; }
 
         public DbSet<LeaveBalance> LeaveBalances { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -103,6 +104,18 @@ namespace LeaveManagementSystem.Data
             modelBuilder.Entity<LeaveRequest>()
                 .Property(lr => lr.RejectionReason)
                 .HasMaxLength(500);
+
+            modelBuilder.Entity<AuditLog>().Property(a => a.PerformedBy)
+                 .HasMaxLength(100).IsRequired();
+
+            modelBuilder.Entity<AuditLog>().Property(a => a.Action)
+                .HasMaxLength(50).IsRequired();
+
+            modelBuilder.Entity<AuditLog>().Property(a => a.Module)
+                .HasMaxLength(50).IsRequired();
+
+            modelBuilder.Entity<AuditLog>().Property(a => a.Description)
+                .HasMaxLength(500).IsRequired();
         }
     }
 }
