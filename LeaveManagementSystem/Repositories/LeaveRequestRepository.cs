@@ -1,4 +1,5 @@
-﻿using LeaveManagementSystem.Data;
+﻿
+using LeaveManagementSystem.Data;
 using LeaveManagementSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,42 +14,48 @@ namespace LeaveManagementSystem.Repositories
             _context = context;
         }
 
-        public List<LeaveRequest> GetAll()
+        // Get all leave requests
+        public async Task<List<LeaveRequest>> GetAllAsync()
         {
-            return _context.LeaveRequests
+            return await _context.LeaveRequests
                 .AsNoTracking()
                 .Include(r => r.Employee)
                 .Include(r => r.LeaveType)
                 .OrderByDescending(r => r.AppliedOn)
-                .ToList();
+                .ToListAsync();
         }
 
-        public LeaveRequest? GetById(int id)
+        // Get leave request by ID
+        public async Task<LeaveRequest?> GetByIdAsync(int id)
         {
-            return _context.LeaveRequests
+            return await _context.LeaveRequests
                 .Include(r => r.Employee)
                 .Include(r => r.LeaveType)
-                .FirstOrDefault(r => r.LeaveRequestId == id);
+                .FirstOrDefaultAsync(r => r.LeaveRequestId == id);
         }
 
-        public void Add(LeaveRequest request)
+        // Add leave request
+        public async Task AddAsync(LeaveRequest request)
         {
             _context.LeaveRequests.Add(request);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
 
-        public bool Update(LeaveRequest request)
+        // Update leave request
+        public async Task<bool> UpdateAsync(LeaveRequest request)
         {
-            var existing = _context.LeaveRequests
-                .Find(request.LeaveRequestId);
+            var existing = await _context.LeaveRequests
+                .FindAsync(request.LeaveRequestId);
 
             if (existing == null)
+            {
                 return false;
+            }
 
             existing.Status = request.Status;
             existing.RejectionReason = request.RejectionReason;
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return true;
         }
     }

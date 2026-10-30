@@ -30,21 +30,25 @@ namespace LeaveManagementSystem.Services
             _auditLogService = auditLogService;
         }
 
-        public List<LeaveRequest> GetAll()
+        // Get all leave requests
+        public async Task<List<LeaveRequest>> GetAllAsync()
         {
-            return _requestRepository.GetAll();
+            return await _requestRepository.GetAllAsync();
         }
 
         // Apply for Leave
-        public void Apply(
+        public async Task ApplyAsync(
             int employeeId,
             int leaveTypeId,
             DateTime startDate,
             DateTime endDate,
             string reason)
         {
-            var employee = _employeeRepository.GetById(employeeId);
-            var leaveType = _leaveTypeRepository.GetById(leaveTypeId);
+            var employee =
+                await _employeeRepository.GetByIdAsync(employeeId);
+
+            var leaveType =
+                await _leaveTypeRepository.GetByIdAsync(leaveTypeId);
 
             if (employee == null || !employee.IsActive)
                 throw new ArgumentException("Employee not found or inactive.");
@@ -69,7 +73,7 @@ namespace LeaveManagementSystem.Services
 
             int totalDays = (endDate.Date - startDate.Date).Days + 1;
 
-            var balance = _balanceRepository.Get(
+            var balance = await _balanceRepository.GetAsync(
                 employeeId, leaveTypeId, startDate.Year);
 
             if (balance == null)
@@ -78,7 +82,8 @@ namespace LeaveManagementSystem.Services
             if (balance.RemainingDays < totalDays)
                 throw new ArgumentException("Insufficient leave balance.");
 
-            var existingRequests = _requestRepository.GetAll();
+            var existingRequests =
+                await _requestRepository.GetAllAsync();
 
             bool overlaps = existingRequests.Any(r =>
                 r.EmployeeId == employeeId &&
@@ -89,7 +94,8 @@ namespace LeaveManagementSystem.Services
             if (overlaps)
                 throw new ArgumentException("This leave period overlaps another request.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
@@ -105,7 +111,7 @@ namespace LeaveManagementSystem.Services
                     AppliedOn = DateTime.Now
                 };
 
-                _requestRepository.Add(request);
+                await _requestRepository.AddAsync(request);
 
                 _auditLogService.Log(
                     "Employee",
@@ -117,21 +123,22 @@ namespace LeaveManagementSystem.Services
                     $"Employee ID: {employeeId}, Leave Type ID: {leaveTypeId}, Total Days: {totalDays}, Status: Pending"
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
 
         // Approve Leave
-        public void Approve(int requestId)
+        public async Task ApproveAsync(int requestId)
         {
-            var request = _requestRepository.GetById(requestId);
+            var request =
+                await _requestRepository.GetByIdAsync(requestId);
 
             if (request == null)
                 throw new ArgumentException("Leave request not found.");
@@ -139,7 +146,7 @@ namespace LeaveManagementSystem.Services
             if (request.Status != "Pending")
                 throw new ArgumentException("Only pending requests can be approved.");
 
-            var balance = _balanceRepository.Get(
+            var balance = await _balanceRepository.GetAsync(
                 request.EmployeeId,
                 request.LeaveTypeId,
                 request.StartDate.Year);
@@ -147,7 +154,8 @@ namespace LeaveManagementSystem.Services
             if (balance == null || balance.RemainingDays < request.TotalDays)
                 throw new ArgumentException("Insufficient leave balance.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
@@ -157,8 +165,8 @@ namespace LeaveManagementSystem.Services
                 balance.UsedDays += request.TotalDays;
                 request.Status = "Approved";
 
-                _requestRepository.Update(request);
-                _balanceRepository.SaveChanges();
+                await _requestRepository.UpdateAsync(request);
+                await _balanceRepository.SaveChangesAsync();
 
                 string newValues =
                     $"Status: {request.Status}, Used Days: {balance.UsedDays}";
@@ -173,21 +181,23 @@ namespace LeaveManagementSystem.Services
                     newValues
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
 
         // Reject Leave
-        public void Reject(int requestId, string rejectionReason)
+        public async Task RejectAsync(
+            int requestId, string rejectionReason)
         {
-            var request = _requestRepository.GetById(requestId);
+            var request =
+                await _requestRepository.GetByIdAsync(requestId);
 
             if (request == null)
                 throw new ArgumentException("Leave request not found.");
@@ -201,7 +211,8 @@ namespace LeaveManagementSystem.Services
             if (rejectionReason.Length > 500)
                 throw new ArgumentException("Rejection reason cannot exceed 500 characters.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
@@ -210,7 +221,7 @@ namespace LeaveManagementSystem.Services
                 request.Status = "Rejected";
                 request.RejectionReason = rejectionReason.Trim();
 
-                _requestRepository.Update(request);
+                await _requestRepository.UpdateAsync(request);
 
                 string newValues =
                     $"Status: {request.Status}, Rejection Reason: {request.RejectionReason}";
@@ -225,13 +236,13 @@ namespace LeaveManagementSystem.Services
                     newValues
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }

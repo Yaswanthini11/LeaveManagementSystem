@@ -1,4 +1,5 @@
-﻿using LeaveManagementSystem.Models;
+﻿
+using LeaveManagementSystem.Models;
 using LeaveManagementSystem.Repositories;
 
 namespace LeaveManagementSystem.Services
@@ -12,6 +13,7 @@ namespace LeaveManagementSystem.Services
             _repository = repository;
         }
 
+        // Add audit log
         public void Log(
             string performedBy,
             string action,
@@ -36,9 +38,10 @@ namespace LeaveManagementSystem.Services
             _repository.Add(auditLog);
         }
 
-        public List<AuditLog> GetAllLogs()
+        // Get all audit logs
+        public async Task<List<AuditLog>> GetAllLogsAsync()
         {
-            return _repository.GetAll();
+            return await _repository.GetAllAsync();
         }
     }
 }

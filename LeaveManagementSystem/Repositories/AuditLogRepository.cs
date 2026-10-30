@@ -1,4 +1,5 @@
-﻿using LeaveManagementSystem.Data;
+﻿
+using LeaveManagementSystem.Data;
 using LeaveManagementSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,17 +14,20 @@ namespace LeaveManagementSystem.Repositories
             _context = context;
         }
 
+        // Add audit log to the context
+        // Saving is handled by the service transaction
         public void Add(AuditLog auditLog)
         {
             _context.AuditLogs.Add(auditLog);
         }
 
-        public List<AuditLog> GetAll()
+        // Get all audit logs
+        public async Task<List<AuditLog>> GetAllAsync()
         {
-            return _context.AuditLogs
+            return await _context.AuditLogs
                 .AsNoTracking()
                 .OrderByDescending(a => a.CreatedAt)
-                .ToList();
+                .ToListAsync();
         }
     }
 }

@@ -21,12 +21,15 @@ namespace LeaveManagementSystem.Services
             _auditLogService = auditLogService;
         }
 
-        public List<LeaveBalance> GetByEmployee(int employeeId, int year)
+        // Get leave balance by employee and year
+        public async Task<List<LeaveBalance>> GetByEmployeeAsync(
+            int employeeId, int year)
         {
-            return _repository.GetByEmployee(employeeId, year);
+            return await _repository.GetByEmployeeAsync(employeeId, year);
         }
 
-        public void Allocate(
+        // Allocate leave balance
+        public async Task AllocateAsync(
             int employeeId,
             int leaveTypeId,
             int year,
@@ -41,11 +44,13 @@ namespace LeaveManagementSystem.Services
             if (allocatedDays < 0)
                 throw new ArgumentException("Allocated days cannot be negative.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
-                var existing = _repository.Get(employeeId, leaveTypeId, year);
+                var existing = await _repository.GetAsync(
+                    employeeId, leaveTypeId, year);
 
                 string? oldValues = null;
                 string action;
@@ -62,7 +67,7 @@ namespace LeaveManagementSystem.Services
                     balance = existing;
                     action = "Updated";
 
-                    _repository.SaveChanges();
+                    await _repository.SaveChangesAsync();
                 }
                 else
                 {
@@ -75,7 +80,7 @@ namespace LeaveManagementSystem.Services
                         UsedDays = 0
                     };
 
-                    _repository.Add(balance);
+                    await _repository.AddAsync(balance);
                     action = "Allocated";
                 }
 
@@ -92,13 +97,13 @@ namespace LeaveManagementSystem.Services
                     newValues
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }

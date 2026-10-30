@@ -21,21 +21,23 @@ namespace LeaveManagementSystem.Services
             _auditLogService = auditLogService;
         }
 
-        public List<LeaveType> GetAll()
+        // Get all leave types
+        public async Task<List<LeaveType>> GetAllAsync()
         {
-            return _repository.GetAll();
+            return await _repository.GetAllAsync();
         }
 
         // Add Leave Type
-        public void Add(LeaveType leaveType)
+        public async Task AddAsync(LeaveType leaveType)
         {
             Validate(leaveType);
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
-                _repository.Add(leaveType);
+                await _repository.AddAsync(leaveType);
 
                 _auditLogService.Log(
                     "Admin",
@@ -47,30 +49,32 @@ namespace LeaveManagementSystem.Services
                     $"Name: {leaveType.Name}, Default Days: {leaveType.DefaultDays}"
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
 
         // Update Leave Type
-        public bool Update(LeaveType leaveType)
+        public async Task<bool> UpdateAsync(LeaveType leaveType)
         {
             Validate(leaveType);
 
             if (leaveType.LeaveTypeId <= 0)
                 throw new ArgumentException("Invalid leave type ID.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
-                var oldLeaveType = _repository.GetById(leaveType.LeaveTypeId);
+                var oldLeaveType =
+                    await _repository.GetByIdAsync(leaveType.LeaveTypeId);
 
                 if (oldLeaveType == null)
                     return false;
@@ -78,7 +82,7 @@ namespace LeaveManagementSystem.Services
                 string oldValues =
                     $"Name: {oldLeaveType.Name}, Default Days: {oldLeaveType.DefaultDays}";
 
-                bool updated = _repository.Update(leaveType);
+                bool updated = await _repository.UpdateAsync(leaveType);
 
                 if (!updated)
                     return false;
@@ -96,30 +100,31 @@ namespace LeaveManagementSystem.Services
                     newValues
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
 
                 return true;
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
 
         // Delete Leave Type
-        public bool Delete(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             if (id <= 0)
                 throw new ArgumentException("Invalid leave type ID.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
-                var leaveType = _repository.GetById(id);
+                var leaveType = await _repository.GetByIdAsync(id);
 
                 if (leaveType == null)
                     return false;
@@ -127,7 +132,7 @@ namespace LeaveManagementSystem.Services
                 string oldValues =
                     $"Name: {leaveType.Name}, Default Days: {leaveType.DefaultDays}";
 
-                bool deleted = _repository.Delete(id);
+                bool deleted = await _repository.DeleteAsync(id);
 
                 if (!deleted)
                     return false;
@@ -142,15 +147,15 @@ namespace LeaveManagementSystem.Services
                     null
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
 
                 return true;
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }

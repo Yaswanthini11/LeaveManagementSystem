@@ -1,4 +1,5 @@
-﻿using LeaveManagementSystem.Data;
+﻿
+using LeaveManagementSystem.Data;
 using LeaveManagementSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,49 +14,60 @@ namespace LeaveManagementSystem.Repositories
             _context = context;
         }
 
-        public List<LeaveType> GetAll()
+        // Get all leave types
+        public async Task<List<LeaveType>> GetAllAsync()
         {
-            return _context.LeaveTypes
+            return await _context.LeaveTypes
                 .AsNoTracking()
-                .ToList();
+                .ToListAsync();
         }
 
-        public LeaveType? GetById(int id)
+        // Get leave type by ID
+        public async Task<LeaveType?> GetByIdAsync(int id)
         {
-            return _context.LeaveTypes.Find(id);
+            return await _context.LeaveTypes
+                .FindAsync(id);
         }
 
-        public void Add(LeaveType leaveType)
+        // Add leave type
+        public async Task AddAsync(LeaveType leaveType)
         {
             _context.LeaveTypes.Add(leaveType);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
 
-        public bool Update(LeaveType leaveType)
+        // Update leave type
+        public async Task<bool> UpdateAsync(LeaveType leaveType)
         {
-            var existing = _context.LeaveTypes
-                .Find(leaveType.LeaveTypeId);
+            var existing = await _context.LeaveTypes
+                .FindAsync(leaveType.LeaveTypeId);
 
             if (existing == null)
+            {
                 return false;
+            }
 
             existing.Name = leaveType.Name;
             existing.DefaultDays = leaveType.DefaultDays;
             existing.IsActive = leaveType.IsActive;
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return true;
         }
 
-        public bool Delete(int id)
+        // Delete leave type
+        public async Task<bool> DeleteAsync(int id)
         {
-            var existing = _context.LeaveTypes.Find(id);
+            var existing = await _context.LeaveTypes
+                .FindAsync(id);
 
             if (existing == null)
+            {
                 return false;
+            }
 
             _context.LeaveTypes.Remove(existing);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return true;
         }
     }

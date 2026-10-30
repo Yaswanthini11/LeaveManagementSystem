@@ -21,29 +21,32 @@ namespace LeaveManagementSystem.Services
             _auditLogService = auditLogService;
         }
 
-        public List<Employee> GetAll()
+        // Get all employees
+        public async Task<List<Employee>> GetAllAsync()
         {
-            return _repository.GetAll();
+            return await _repository.GetAllAsync();
         }
 
-        public Employee? GetById(int id)
+        // Get employee by ID
+        public async Task<Employee?> GetByIdAsync(int id)
         {
             if (id <= 0)
                 throw new ArgumentException("Employee ID must be positive.");
 
-            return _repository.GetById(id);
+            return await _repository.GetByIdAsync(id);
         }
 
         // Add Employee
-        public void Add(Employee employee)
+        public async Task AddAsync(Employee employee)
         {
             ValidateEmployee(employee);
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
-                _repository.Add(employee);
+                await _repository.AddAsync(employee);
 
                 _auditLogService.Log(
                     "Admin",
@@ -55,30 +58,32 @@ namespace LeaveManagementSystem.Services
                     $"Name: {employee.FullName}, Email: {employee.Email}, Department: {employee.Department}"
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
 
         // Update Employee
-        public bool Update(Employee employee)
+        public async Task<bool> UpdateAsync(Employee employee)
         {
             ValidateEmployee(employee);
 
             if (employee.EmployeeId <= 0)
                 throw new ArgumentException("Invalid employee ID.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
-                var oldEmployee = _repository.GetById(employee.EmployeeId);
+                var oldEmployee =
+                    await _repository.GetByIdAsync(employee.EmployeeId);
 
                 if (oldEmployee == null)
                     return false;
@@ -86,7 +91,7 @@ namespace LeaveManagementSystem.Services
                 string oldValues =
                     $"Name: {oldEmployee.FullName}, Email: {oldEmployee.Email}, Department: {oldEmployee.Department}";
 
-                bool updated = _repository.Update(employee);
+                bool updated = await _repository.UpdateAsync(employee);
 
                 if (!updated)
                     return false;
@@ -104,30 +109,31 @@ namespace LeaveManagementSystem.Services
                     newValues
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
 
                 return true;
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }
 
         // Delete Employee
-        public bool Delete(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
             if (id <= 0)
                 throw new ArgumentException("Invalid employee ID.");
 
-            using var transaction = _context.Database.BeginTransaction();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
-                var employee = _repository.GetById(id);
+                var employee = await _repository.GetByIdAsync(id);
 
                 if (employee == null)
                     return false;
@@ -135,7 +141,7 @@ namespace LeaveManagementSystem.Services
                 string oldValues =
                     $"Name: {employee.FullName}, Email: {employee.Email}, Department: {employee.Department}";
 
-                bool deleted = _repository.Delete(id);
+                bool deleted = await _repository.DeleteAsync(id);
 
                 if (!deleted)
                     return false;
@@ -150,15 +156,15 @@ namespace LeaveManagementSystem.Services
                     null
                 );
 
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                transaction.Commit();
+                await transaction.CommitAsync();
 
                 return true;
             }
             catch
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync();
                 throw;
             }
         }

@@ -1,4 +1,5 @@
-﻿using LeaveManagementSystem.Data;
+﻿
+using LeaveManagementSystem.Data;
 using LeaveManagementSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,32 +14,39 @@ namespace LeaveManagementSystem.Repositories
             _context = context;
         }
 
-        public List<LeaveBalance> GetByEmployee(int employeeId, int year)
+        // Get leave balances by employee and year
+        public async Task<List<LeaveBalance>> GetByEmployeeAsync(
+            int employeeId, int year)
         {
-            return _context.LeaveBalances
+            return await _context.LeaveBalances
                 .AsNoTracking()
                 .Include(b => b.LeaveType)
                 .Where(b => b.EmployeeId == employeeId && b.Year == year)
-                .ToList();
+                .ToListAsync();
         }
 
-        public LeaveBalance? Get(int employeeId, int leaveTypeId, int year)
+        // Get a specific leave balance
+        public async Task<LeaveBalance?> GetAsync(
+            int employeeId, int leaveTypeId, int year)
         {
-            return _context.LeaveBalances.FirstOrDefault(b =>
-                b.EmployeeId == employeeId &&
-                b.LeaveTypeId == leaveTypeId &&
-                b.Year == year);
+            return await _context.LeaveBalances
+                .FirstOrDefaultAsync(b =>
+                    b.EmployeeId == employeeId &&
+                    b.LeaveTypeId == leaveTypeId &&
+                    b.Year == year);
         }
 
-        public void Add(LeaveBalance balance)
+        // Add leave balance
+        public async Task AddAsync(LeaveBalance balance)
         {
             _context.LeaveBalances.Add(balance);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
 
-        public void SaveChanges()
+        // Save changes
+        public async Task SaveChangesAsync()
         {
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
     }
 }

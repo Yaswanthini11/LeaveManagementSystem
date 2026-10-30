@@ -9,7 +9,7 @@ namespace LeaveManagementSystem
 {
     internal class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseSqlServer(
@@ -77,24 +77,32 @@ namespace LeaveManagementSystem
                     switch (choice)
                     {
                         case "1":
-                            employeeService.Add(new Employee
+                            await employeeService.AddAsync(new Employee
                             {
                                 FullName = ReadText("Full name: "),
                                 Email = ReadText("Email: "),
                                 Department = ReadText("Department: "),
                                 DateOfJoining = ReadDate("Date of joining (yyyy-MM-dd): ")
                             });
+
                             Console.WriteLine("Employee added.");
                             break;
 
                         case "2":
-                            foreach (var e in employeeService.GetAll())
-                                Console.WriteLine($"{e.EmployeeId} | {e.FullName} | {e.Email} | {e.Department} | Active: {e.IsActive}");
+                            var employees = await employeeService.GetAllAsync();
+
+                            foreach (var e in employees)
+                            {
+                                Console.WriteLine(
+                                    $"{e.EmployeeId} | {e.FullName} | {e.Email} | {e.Department} | Active: {e.IsActive}");
+                            }
                             break;
 
                         case "3":
                             int updateId = ReadInt("Employee ID: ");
-                            var employee = employeeService.GetById(updateId);
+
+                            var employee =
+                                await employeeService.GetByIdAsync(updateId);
 
                             if (employee == null)
                             {
@@ -107,72 +115,106 @@ namespace LeaveManagementSystem
                             employee.Department = ReadText("New department: ");
                             employee.DateOfJoining = ReadDate("New joining date (yyyy-MM-dd): ");
 
-                            Console.WriteLine(employeeService.Update(employee)
+                            bool employeeUpdated =
+                                await employeeService.UpdateAsync(employee);
+
+                            Console.WriteLine(employeeUpdated
                                 ? "Employee updated."
                                 : "Employee not found.");
                             break;
 
                         case "4":
-                            Console.WriteLine(employeeService.Delete(ReadInt("Employee ID: "))
+                            bool employeeDeleted =
+                                await employeeService.DeleteAsync(
+                                    ReadInt("Employee ID: "));
+
+                            Console.WriteLine(employeeDeleted
                                 ? "Employee deleted."
                                 : "Employee not found.");
                             break;
 
                         case "5":
-                            leaveTypeService.Add(new LeaveType
+                            await leaveTypeService.AddAsync(new LeaveType
                             {
                                 Name = ReadText("Leave type name: "),
                                 DefaultDays = ReadInt("Default days: ")
                             });
+
                             Console.WriteLine("Leave type added.");
                             break;
 
                         case "6":
-                            foreach (var t in leaveTypeService.GetAll())
-                                Console.WriteLine($"{t.LeaveTypeId} | {t.Name} | {t.DefaultDays} days | Active: {t.IsActive}");
+                            var leaveTypes =
+                                await leaveTypeService.GetAllAsync();
+
+                            foreach (var t in leaveTypes)
+                            {
+                                Console.WriteLine(
+                                    $"{t.LeaveTypeId} | {t.Name} | {t.DefaultDays} days | Active: {t.IsActive}");
+                            }
                             break;
 
                         case "7":
-                            balanceService.Allocate(
+                            await balanceService.AllocateAsync(
                                 ReadInt("Employee ID: "),
                                 ReadInt("Leave type ID: "),
                                 ReadInt("Year: "),
                                 ReadInt("Allocated days: "));
+
                             Console.WriteLine("Leave balance allocated.");
                             break;
 
                         case "8":
-                            int balanceEmployeeId = ReadInt("Employee ID: ");
+                            int balanceEmployeeId =
+                                ReadInt("Employee ID: ");
+
                             int year = ReadInt("Year: ");
 
-                            foreach (var b in balanceService.GetByEmployee(balanceEmployeeId, year))
-                                Console.WriteLine($"{b.LeaveType.Name}: allocated={b.AllocatedDays}, used={b.UsedDays}, remaining={b.RemainingDays}");
+                            var balances =
+                                await balanceService.GetByEmployeeAsync(
+                                    balanceEmployeeId, year);
+
+                            foreach (var b in balances)
+                            {
+                                Console.WriteLine(
+                                    $"{b.LeaveType.Name}: allocated={b.AllocatedDays}, used={b.UsedDays}, remaining={b.RemainingDays}");
+                            }
                             break;
 
                         case "9":
-                            requestService.Apply(
+                            await requestService.ApplyAsync(
                                 ReadInt("Employee ID: "),
                                 ReadInt("Leave type ID: "),
                                 ReadDate("Start date (yyyy-MM-dd): "),
                                 ReadDate("End date (yyyy-MM-dd): "),
                                 ReadText("Reason: "));
+
                             Console.WriteLine("Leave request submitted.");
                             break;
 
                         case "10":
-                            foreach (var r in requestService.GetAll())
-                                Console.WriteLine($"{r.LeaveRequestId} | {r.Employee.FullName} | {r.LeaveType.Name} | {r.StartDate:yyyy-MM-dd} to {r.EndDate:yyyy-MM-dd} | {r.TotalDays} days | {r.Status} | {r.RejectionReason}");
+                            var requests =
+                                await requestService.GetAllAsync();
+
+                            foreach (var r in requests)
+                            {
+                                Console.WriteLine(
+                                    $"{r.LeaveRequestId} | {r.Employee.FullName} | {r.LeaveType.Name} | {r.StartDate:yyyy-MM-dd} to {r.EndDate:yyyy-MM-dd} | {r.TotalDays} days | {r.Status} | {r.RejectionReason}");
+                            }
                             break;
 
                         case "11":
-                            requestService.Approve(ReadInt("Leave request ID: "));
+                            await requestService.ApproveAsync(
+                                ReadInt("Leave request ID: "));
+
                             Console.WriteLine("Leave request approved.");
                             break;
 
                         case "12":
-                            requestService.Reject(
+                            await requestService.RejectAsync(
                                 ReadInt("Leave request ID: "),
                                 ReadText("Rejection reason: "));
+
                             Console.WriteLine("Leave request rejected.");
                             break;
 
